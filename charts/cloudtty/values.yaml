@@ -18,7 +18,6 @@ global:
 ## @param installCRDs define flag whether to install CRD resources
 installCRDs: true
 
-
 ## @section controllerManager configuration
 ## @param labels controllerManager labels
 labels: {}
@@ -42,8 +41,8 @@ maxWorkerLimit: 10
 ## @param image.pullPolicy cloudtty image pull policy
 ## @param image.pullSecrets Specify docker-registry secret names as an array
 image:
-  registry: ghcr.io
-  repository: cloudtty/cloudshell-operator
+  registry: registry.atlascloud.ai
+  repository: library/cloudshell-operator
   tag: "v0.8.1"
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -69,13 +68,25 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 ## @param nodeSelector controllerManager node labels for pod assignment
-nodeSelector: {}
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
 
 ## @param affinity controllerManager affinity settings
 affinity: {}
 
 ## @param tolerations controllerManager tolerations for pod assignment
-tolerations: {}
+tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/control-plane
+    operator: Exists
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
 
 ## @param livenessProbe.enabled Enable livenessProbe on Kafka containers
 livenessProbe:
@@ -89,6 +100,6 @@ readinessProbe:
 ## @param cloudshellImage.repository cloudshell image repository
 ## @param cloudshellImage.tag cloudshell image tag (immutable tags are recommended)
 cloudshellImage:
-  registry: ghcr.io
-  repository: cloudtty/cloudshell
+  registry: registry.atlascloud.ai
+  repository: library/cloudshell
   tag: "v0.8.1"

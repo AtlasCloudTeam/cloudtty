@@ -50,6 +50,8 @@ interface Props {
     showSz: boolean;
     hideDownload: (v: boolean) => void;
     hideUpload: (v: boolean) => void;
+    authCredentials?: string;
+    onAuthFailure?: () => void;
 }
 
 export class Xterm extends Component<Props> {
@@ -247,7 +249,15 @@ export class Xterm extends Component<Props> {
             this.startTimestamp = new Date().getTime();
         }
 
-        this.socket = new WebSocket(this.props.wsUrl, ['tty']);
+        // Create WebSocket URL with authentication credentials
+        let wsUrl = this.props.wsUrl;
+        if (this.props.authCredentials) {
+            const url = new URL(wsUrl);
+            url.searchParams.set('auth', this.props.authCredentials);
+            wsUrl = url.toString();
+        }
+
+        this.socket = new WebSocket(wsUrl, ['tty']);
 
         const { socket } = this;
 
@@ -362,7 +372,12 @@ export class Xterm extends Component<Props> {
         const { socket, textEncoder, terminal, fitAddon, overlayAddon } = this;
         const dims = fitAddon.proposeDimensions();
 
-        const authTokenMsg = JSON.stringify({ AuthToken: this.token });
+        // Send authentication token and credentials
+        const authData: any = { AuthToken: this.token };
+        if (this.props.authCredentials) {
+            authData.Authorization = `Basic ${this.props.authCredentials}`;
+        }
+        const authTokenMsg = JSON.stringify(authData);
         socket.send(textEncoder.encode(authTokenMsg));
 
         const resizeMsg = JSON.stringify({ columns: dims.cols, rows: dims.rows });
@@ -432,6 +447,18 @@ export class Xterm extends Component<Props> {
     private onSocketClose(event: CloseEvent) {
         console.log(`[ttyd] websocket connection closed with code: ${event.code}`);
 
+        // Handle authentication failure (401)
+        if (event.code === 1008 || event.code === 1000) {
+            // Check if this is an authentication failure
+            if (event.reason && event.reason.includes('401')) {
+                console.log('[ttyd] Authentication failed');
+                if (this.props.onAuthFailure) {
+                    this.props.onAuthFailure();
+                }
+                return;
+            }
+        }
+
         if (this.ttl !== Infinity) {
             this.endTimestamp = new Date().getTime();
             const durationTime = Math.floor((this.endTimestamp - this.startTimestamp) / 1000);
@@ -477,6 +504,15 @@ export class Xterm extends Component<Props> {
 
         switch (cmd) {
             case Command.OUTPUT:
+                // Check if the output contains authentication error
+                const output = textDecoder.decode(data);
+                if (output.includes('401') || output.includes('Unauthorized') || output.includes('Authentication failed')) {
+                    console.log('[ttyd] Authentication failed detected in output');
+                    if (this.props.onAuthFailure) {
+                        this.props.onAuthFailure();
+                    }
+                    return;
+                }
                 zmodemAddon.consume(data);
                 break;
             case Command.SET_WINDOW_TITLE:

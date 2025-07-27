@@ -43,7 +43,7 @@ maxWorkerLimit: 10
 image:
   registry: registry.atlascloud.ai
   repository: library/cloudshell-operator
-  tag: "v0.8.1"
+  tag: "v0.8.2"
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -102,4 +102,4 @@ readinessProbe:
 cloudshellImage:
   registry: registry.atlascloud.ai
   repository: library/cloudshell
-  tag: "v0.8.1"
+  tag: "v0.8.2"

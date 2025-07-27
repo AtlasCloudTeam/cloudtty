@@ -367,7 +367,7 @@ func (c *Controller) StartupWorkerFor(ctx context.Context, cloudshell *cloudshel
 
 func (c *Controller) StartupWorker(_ context.Context, cloudshell *cloudshellv1alpha1.CloudShell, kubeConfigByte []byte) error {
 	// TODO: Some extra logic in order to upload and download files.
-	var podName, namespace, container, serverBufferSize string
+	var podName, namespace, container, serverBufferSize, password string
 	serverBufferSize = c.ttydServiceBufferSize
 	for _, env := range cloudshell.Spec.Env {
 		switch env.Name {
@@ -379,15 +379,20 @@ func (c *Controller) StartupWorker(_ context.Context, cloudshell *cloudshellv1al
 			container = env.Value
 		case "TTYD_SERVER_BUFFER_SIZE":
 			serverBufferSize = env.Value
+		case "TTYD_PASSWORD":
+			password = env.Value
 		}
 	}
-	klog.InfoS("Cloudshell config", "cloudshell.name", cloudshell.Name, "serverBufferSize", serverBufferSize)
+	if password == "" {
+		password = constants.DefaultPassword
+	}
+	klog.InfoS("Cloudshell config", "cloudshell.name", cloudshell.Name, "serverBufferSize", serverBufferSize, "password", password)
 	// start ttyd, ttyd args passed as shell parameter
 	// case: ttydCommand := []string{"/usr/lib/ttyd/startup.sh", "${KUBECONFIG}" "${ONCE}", "${URLARG}", "${COMMAND}"}
 	ttydCommand := []string{
 		startupScriptPath,
 		string(kubeConfigByte), fmt.Sprint(cloudshell.Spec.Once), fmt.Sprint(cloudshell.Spec.UrlArg),
-		cloudshell.Spec.CommandAction, podName, namespace, container,
+		cloudshell.Spec.CommandAction, podName, namespace, container, password,
 	}
 	if serverBufferSize != "" {
 		ttydCommand = append(ttydCommand, serverBufferSize)

@@ -11,7 +11,8 @@ COMMAND=${4:-"bash"}
 POD_NAME=${5:-}
 POD_NAMESPACE=${6:-"default"}
 CONTAINER=${7:-}
-SERVER_BUFFER_SIZE=${8:-}
+PASSWORD=${8:-}
+SERVER_BUFFER_SIZE=${9:-}
 
 if [ -d /root -a "`ls /root`" != "" ]; then         
   rm -rf /root/*                                    
@@ -32,11 +33,16 @@ if [[ -n "${CONTAINER}" ]]; then
   echo "export CONTAINER='${CONTAINER}'" >> /root/.env
 fi
 
+if [[ -n "${PASSWORD}" ]]; then
+  echo "export PASSWORD='${PASSWORD}'" >> /root/.env
+fi
+
 source /root/.bashrc
 
 once=""
 index=""
 urlarg=""
+password=""
 server_buffer_size=""
 
 if [[ "${ONCE}" == "true" ]];then
@@ -51,9 +57,13 @@ if [[ "${URLARG}" == "true" ]];then
   urlarg=" -a "
 fi
 
+if [[ -n "${PASSWORD}" ]]; then
+  password=" -c admin:${PASSWORD} "
+fi
+
 if [[ -n "${SERVER_BUFFER_SIZE}" ]]; then
   server_buffer_size=" --serv_buffer_size ${SERVER_BUFFER_SIZE} "
 fi
 
-nohup ttyd -W ${index} ${once} ${urlarg} ${server_buffer_size} sh -c "${COMMAND}" > /usr/lib/ttyd/nohup.log 2>&1 &
+nohup ttyd -W ${index} ${once} ${urlarg} ${password} ${server_buffer_size} sh -c "${COMMAND}" > /usr/lib/ttyd/nohup.log 2>&1 &
 echo "Start ttyd successully."

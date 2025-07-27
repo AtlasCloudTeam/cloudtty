@@ -15,4 +15,6 @@ const (
 	WorkerNameLabelKey         = "worker.cloudtty.io/name"
 
 	PodTemplatePath = "/etc/cloudtty/pod-temp.yaml"
+
+	DefaultPassword = "admin"
 )

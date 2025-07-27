@@ -89,6 +89,12 @@ export class Xterm extends Component<Props> {
     }
 
     async componentDidMount() {
+        // Only proceed if we have authentication credentials
+        if (!this.props.authCredentials) {
+            console.log('[ttyd] No authentication credentials provided');
+            return;
+        }
+        
         await this.refreshToken();
         this.openTerminal();
         this.connect();
@@ -97,7 +103,18 @@ export class Xterm extends Component<Props> {
         window.addEventListener('beforeunload', this.onWindowUnload);
     }
 
-    componentDidUpdate() {
+    componentDidUpdate(prevProps: Props) {
+        // Handle authentication credentials changes
+        if (this.props.authCredentials && !prevProps.authCredentials) {
+            // New credentials provided, try to connect
+            this.refreshToken().then(() => {
+                if (!this.terminal) {
+                    this.openTerminal();
+                }
+                this.connect();
+            });
+        }
+        
         if (this.props.showRz) {
             const { socket, textEncoder } = this;
             socket.send(textEncoder.encode(Command.INPUT + 'r'));
@@ -183,10 +200,27 @@ export class Xterm extends Component<Props> {
     @bind
     private async refreshToken() {
         try {
-            const resp = await fetch(this.props.tokenUrl);
+            const headers: HeadersInit = {};
+            
+            // Add Authorization header if credentials are provided
+            if (this.props.authCredentials) {
+                headers['Authorization'] = `Basic ${this.props.authCredentials}`;
+            }
+            
+            const resp = await fetch(this.props.tokenUrl, {
+                headers: headers
+            });
+            
             if (resp.ok) {
                 const json = await resp.json();
                 this.token = json.token;
+            } else if (resp.status === 401) {
+                // Handle authentication failure for token request
+                console.log('[ttyd] Token request authentication failed');
+                if (this.props.onAuthFailure) {
+                    this.props.onAuthFailure();
+                }
+                return;
             }
         } catch (e) {
             console.error(`[ttyd] fetch ${this.props.tokenUrl}: `, e);
